@@ -306,6 +306,37 @@
                     console.log(`🔗 Got download URL, fetching directly from Firebase Storage CDN...`);
                     console.log(`📍 Download URL: ${data.downloadURL}`);
                     
+                    // Fetch directly from Firebase Storage CDN
+                    const cdnStartTime = performance.now();
+                    const cdnResponse = await fetch(data.downloadURL, { cache: cacheMode });
+                    const cdnEndTime = performance.now();
+                    const cdnRequestTime = cdnEndTime - cdnStartTime;
+                    
+                    if (!cdnResponse.ok) {
+                        throw new Error(`CDN fetch failed: ${cdnResponse.status} ${cdnResponse.statusText}`);
+                    }
+                    
+                    const cdnResponseText = await cdnResponse.text();
+                    const cdnDataSize = new Blob([cdnResponseText]).size;
+                    const products = JSON.parse(cdnResponseText);
+                    
+                    console.log(`📊 CDN Response details:`, {
+                        requestTime: cdnRequestTime,
+                        dataSize: cdnDataSize,
+                        cacheControl: cdnResponse.headers.get('cache-control'),
+                        etag: cdnResponse.headers.get('etag'),
+                        status: cdnResponse.status,
+                        success: true,
+                        productCount: products.length
+                    });
+                    
+                    displayProducts(products, category);
+                    updateStats(cdnRequestTime, products.length, 'CDN', cdnDataSize);
+                    
+                    const speedEmoji = cdnRequestTime < 100 ? '⚡' : cdnRequestTime < 300 ? '🚀' : '🐌';
+                    showMessage(`${speedEmoji} Loaded ${products.length} products from Firebase CDN in ${Math.round(cdnRequestTime)}ms`, 'success');
+                    return;
+                    
                     const cdnStartTime = performance.now();
                     const cdnResponse = await fetch(data.downloadURL, {
                         cache: cacheMode,
