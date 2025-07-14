@@ -298,6 +298,7 @@
                 // If we have a downloadURL, fetch directly from Firebase Storage CDN
                 if (data.downloadURL) {
                     console.log(`🔗 Got download URL, fetching directly from Firebase Storage CDN...`);
+                    console.log(`📍 Download URL: ${data.downloadURL}`);
                     
                     const cdnStartTime = performance.now();
                     const cdnResponse = await fetch(data.downloadURL, {
@@ -307,13 +308,20 @@
                     const cdnEndTime = performance.now();
                     const cdnRequestTime = cdnEndTime - cdnStartTime;
                     
+                    console.log(`📊 CDN Response Status: ${cdnResponse.status}`);
+                    console.log(`📊 CDN Response OK: ${cdnResponse.ok}`);
+                    
                     if (!cdnResponse.ok) {
-                        throw new Error(`CDN fetch failed: ${cdnResponse.status}`);
+                        throw new Error(`CDN fetch failed: ${cdnResponse.status} ${cdnResponse.statusText}`);
                     }
                     
                     const cdnResponseText = await cdnResponse.text();
                     const dataSize = new Blob([cdnResponseText]).size;
+                    console.log(`📊 CDN Response Size: ${dataSize} bytes`);
+                    console.log(`📊 CDN Response Text (first 200 chars): ${cdnResponseText.substring(0, 200)}`);
+                    
                     const products = JSON.parse(cdnResponseText);
+                    console.log(`📊 Parsed Products Count: ${products.length}`);
                     
                     console.log(`📊 CDN fetch details:`, {
                         cdnRequestTime: Math.round(cdnRequestTime),
@@ -380,11 +388,13 @@
                 
             } catch (error) {
                 console.error('❌ Load error:', error);
+                console.error('❌ Error stack:', error.stack);
                 showMessage(`Error loading ${category}: ${error.message}`, 'error');
                 document.getElementById('products').innerHTML = `
                     <div class="empty-state">
                         <h3>Error Loading Products</h3>
-                        <p>${error.message}</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Details:</strong> Check browser console for more information</p>
                         <p>Try adding products first using the uploader.</p>
                     </div>
                 `;
