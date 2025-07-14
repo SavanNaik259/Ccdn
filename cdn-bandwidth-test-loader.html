@@ -278,7 +278,7 @@
                 }
                 
                 const responseText = await response.text();
-                const dataSize = new Blob([responseText]).size;
+                const functionDataSize = new Blob([responseText]).size;
                 const data = JSON.parse(responseText);
                 
                 // Check if the response contains an error
@@ -291,10 +291,49 @@
                             <p>Try adding products first using the uploader.</p>
                         </div>
                     `;
-                    updateStats(requestTime, 0, 'Error', dataSize);
+                    updateStats(requestTime, 0, 'Error', functionDataSize);
                     return;
                 }
                 
+                // If we have a downloadURL, fetch directly from Firebase Storage CDN
+                if (data.downloadURL) {
+                    console.log(`🔗 Got download URL, fetching directly from Firebase Storage CDN...`);
+                    
+                    const cdnStartTime = performance.now();
+                    const cdnResponse = await fetch(data.downloadURL, {
+                        cache: cacheMode,
+                        method: 'GET'
+                    });
+                    const cdnEndTime = performance.now();
+                    const cdnRequestTime = cdnEndTime - cdnStartTime;
+                    
+                    if (!cdnResponse.ok) {
+                        throw new Error(`CDN fetch failed: ${cdnResponse.status}`);
+                    }
+                    
+                    const cdnResponseText = await cdnResponse.text();
+                    const dataSize = new Blob([cdnResponseText]).size;
+                    const products = JSON.parse(cdnResponseText);
+                    
+                    console.log(`📊 CDN fetch details:`, {
+                        cdnRequestTime: Math.round(cdnRequestTime),
+                        functionRequestTime: Math.round(requestTime),
+                        totalTime: Math.round(requestTime + cdnRequestTime),
+                        dataSize: dataSize,
+                        productCount: products.length
+                    });
+                    
+                    // Update display with CDN timing
+                    displayProducts(products, category);
+                    updateStats(cdnRequestTime, products.length, 
+                        cdnRequestTime < 100 ? 'CDN Hit' : 'CDN Miss', dataSize);
+                    
+                    const speedEmoji = cdnRequestTime < 100 ? '⚡' : cdnRequestTime < 300 ? '🐌' : '🕐';
+                    showMessage(`${speedEmoji} Loaded ${products.length} products from Firebase CDN in ${Math.round(cdnRequestTime)}ms. Function: ${Math.round(requestTime)}ms`, 'success');
+                    return;
+                }
+                
+                // Fallback: if products are included directly (shouldn't happen with new version)
                 const products = data.products || [];
                 
                 // Determine cache status based on response time and headers
@@ -375,8 +414,22 @@
                         totalSize += new Blob([responseText]).size;
                         const data = JSON.parse(responseText);
                         
-                        if (data.success && Array.isArray(data.products)) {
-                            allProducts = allProducts.concat(data.products.map(p => ({...p, category})));
+                        if (data.success) {
+                            if (data.downloadURL) {
+                                // Fetch from CDN URL
+                                const cdnResponse = await fetch(data.downloadURL);
+                                if (cdnResponse.ok) {
+                                    const cdnText = await cdnResponse.text();
+                                    totalSize += new Blob([cdnText]).size;
+                                    const products = JSON.parse(cdnText);
+                                    if (Array.isArray(products)) {
+                                        allProducts = allProducts.concat(products.map(p => ({...p, category})));
+                                    }
+                                }
+                            } else if (Array.isArray(data.products)) {
+                                // Fallback for old format
+                                allProducts = allProducts.concat(data.products.map(p => ({...p, category})));
+                            }
                         }
                     }
                 } catch (error) {

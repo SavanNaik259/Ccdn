@@ -175,6 +175,12 @@ Auric is a premium jewelry e-commerce platform built with a modern web stack fea
   - Tools designed for testing Firebase Storage CDN caching effectiveness
   - User can monitor Firebase Console bandwidth usage to verify CDN behavior
   - Separate "cdn-test" category to isolate testing from production products
+- July 14, 2025: Fixed bandwidth test CDN behavior - eliminated server-side proxy issue
+  - Issue: Netlify function was downloading files from Firebase Storage on every request
+  - Root cause: Function acted as proxy instead of allowing direct CDN access
+  - Solution: Modified function to return download URLs instead of file contents
+  - Updated client code to fetch directly from Firebase Storage CDN URLs
+  - Result: First visitor triggers bandwidth, subsequent visitors use CDN cache properly
 
 ## User Preferences
 

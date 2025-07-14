@@ -147,11 +147,14 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Download and parse the file
-    const [fileContents] = await file.download();
-    const products = JSON.parse(fileContents.toString());
+    // Get the public download URL instead of downloading the file
+    // This allows the client to fetch directly from Firebase Storage CDN
+    const [downloadURL] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+    });
 
-    console.log(`Successfully loaded ${products.length} ${category} bandwidth test products`);
+    console.log(`Successfully generated download URL for ${category} bandwidth test products`);
 
     return {
       statusCode: 200,
@@ -162,10 +165,10 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: true,
-        products: Array.isArray(products) ? products : [],
+        downloadURL: downloadURL,
         category: category,
         testType: 'bandwidth-test',
-        message: `Loaded ${products.length} test products from Firebase Storage`
+        message: `Generated download URL for ${category} test products - client will fetch directly from Firebase CDN`
       })
     };
 
