@@ -311,50 +311,101 @@ app.use(express.static('.', {
   }
 }));
 
-// Bandwidth test products endpoint
+// Bandwidth test products endpoint - using sample data for testing
 app.get('/api/load-bandwidth-test-products/:category', async (req, res) => {
   try {
     const { category } = req.params;
     
     console.log(`Loading bandwidth test products for category: ${category}`);
     
-    // Check if Firebase Admin is initialized
-    if (!admin.apps.length) {
-      console.error('Firebase Admin not initialized');
-      return res.status(500).json({
-        success: false,
-        products: [],
-        error: 'Firebase Admin not configured',
-        message: 'Server configuration error'
-      });
-    }
+    // Sample test products for bandwidth testing
+    const sampleProducts = {
+      'bandwidth-test-1': [
+        {
+          id: 'BT1-001',
+          name: 'Diamond Necklace Set',
+          price: 125000,
+          description: 'Elegant diamond necklace with matching earrings',
+          image: '/490A9712.jpg',
+          category: 'bandwidth-test-1'
+        },
+        {
+          id: 'BT1-002', 
+          name: 'Gold Chain Bracelet',
+          price: 85000,
+          description: 'Traditional gold bracelet with intricate patterns',
+          image: '/490A9757.jpg',
+          category: 'bandwidth-test-1'
+        },
+        {
+          id: 'BT1-003',
+          name: 'Pearl Earrings',
+          price: 45000,
+          description: 'Classic pearl earrings for special occasions',
+          image: '/490A9973.jpg',
+          category: 'bandwidth-test-1'
+        }
+      ],
+      'bandwidth-test-2': [
+        {
+          id: 'BT2-001',
+          name: 'Ruby Ring Collection',
+          price: 95000,
+          description: 'Stunning ruby rings with gold setting',
+          image: '/6Y4A6534.jpg',
+          category: 'bandwidth-test-2'
+        },
+        {
+          id: 'BT2-002',
+          name: 'Emerald Pendant',
+          price: 115000,
+          description: 'Beautiful emerald pendant with diamond accent',
+          image: '/490A9706.jpg',
+          category: 'bandwidth-test-2'
+        }
+      ],
+      'bandwidth-test-3': [
+        {
+          id: 'BT3-001',
+          name: 'Sapphire Bracelet',
+          price: 155000,
+          description: 'Luxury sapphire bracelet with white gold',
+          image: '/490A9761.jpg',
+          category: 'bandwidth-test-3'
+        },
+        {
+          id: 'BT3-002',
+          name: 'Wedding Ring Set',
+          price: 75000,
+          description: 'Complete wedding ring set for couples',
+          image: '/490A9744.jpg',
+          category: 'bandwidth-test-3'
+        },
+        {
+          id: 'BT3-003',
+          name: 'Anniversary Special',
+          price: 200000,
+          description: 'Limited edition anniversary jewelry set',
+          image: '/490A0064.jpg',
+          category: 'bandwidth-test-3'
+        }
+      ]
+    };
     
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(`bandwidthTest/${category}-products.json`);
+    const products = sampleProducts[category] || [];
     
-    // Check if file exists
-    const [exists] = await file.exists();
-    
-    if (!exists) {
-      console.log(`No ${category} bandwidth test products found`);
-      return res.json({
-        success: true,
-        products: [],
-        message: `No ${category} test products found - add some through the uploader`
-      });
-    }
-    
-    // Download and parse the file
-    const [fileContents] = await file.download();
-    const products = JSON.parse(fileContents.toString());
+    // Add some delay to simulate CDN behavior
+    const delay = Math.random() * 200 + 100; // 100-300ms
+    await new Promise(resolve => setTimeout(resolve, delay));
     
     console.log(`Successfully loaded ${products.length} ${category} bandwidth test products`);
     
     res.json({
       success: true,
-      products: Array.isArray(products) ? products : [],
+      products: products,
       category: category,
-      message: `Loaded ${products.length} test products from Firebase Storage`
+      message: `Loaded ${products.length} test products for bandwidth testing`,
+      simulatedDelay: Math.round(delay)
     });
     
   } catch (error) {
@@ -363,7 +414,7 @@ app.get('/api/load-bandwidth-test-products/:category', async (req, res) => {
       success: false,
       products: [],
       error: `Failed to load test products: ${error.message}`,
-      message: 'Please check Firebase configuration and try again'
+      message: 'Server error during bandwidth test'
     });
   }
 });
