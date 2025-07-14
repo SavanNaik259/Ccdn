@@ -311,6 +311,63 @@ app.use(express.static('.', {
   }
 }));
 
+// Bandwidth test products endpoint
+app.get('/api/load-bandwidth-test-products/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    console.log(`Loading bandwidth test products for category: ${category}`);
+    
+    // Check if Firebase Admin is initialized
+    if (!admin.apps.length) {
+      console.error('Firebase Admin not initialized');
+      return res.status(500).json({
+        success: false,
+        products: [],
+        error: 'Firebase Admin not configured',
+        message: 'Server configuration error'
+      });
+    }
+    
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(`bandwidthTest/${category}-products.json`);
+    
+    // Check if file exists
+    const [exists] = await file.exists();
+    
+    if (!exists) {
+      console.log(`No ${category} bandwidth test products found`);
+      return res.json({
+        success: true,
+        products: [],
+        message: `No ${category} test products found - add some through the uploader`
+      });
+    }
+    
+    // Download and parse the file
+    const [fileContents] = await file.download();
+    const products = JSON.parse(fileContents.toString());
+    
+    console.log(`Successfully loaded ${products.length} ${category} bandwidth test products`);
+    
+    res.json({
+      success: true,
+      products: Array.isArray(products) ? products : [],
+      category: category,
+      message: `Loaded ${products.length} test products from Firebase Storage`
+    });
+    
+  } catch (error) {
+    console.error(`Error loading bandwidth test products:`, error);
+    res.status(500).json({
+      success: false,
+      products: [],
+      error: `Failed to load test products: ${error.message}`,
+      message: 'Please check Firebase configuration and try again'
+    });
+  }
+});
+
 // Simpler catch-all route to handle missing files
 app.use((req, res) => {
   // For root path, always send index.html

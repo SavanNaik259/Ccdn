@@ -259,8 +259,11 @@
                 
                 const startTime = performance.now();
                 
-                // Use Netlify function instead of direct Firebase access
-                const functionUrl = `/.netlify/functions/load-bandwidth-test-products?category=${category}`;
+                // Try server endpoint first, fallback to Netlify function
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname.includes('replit');
+                const functionUrl = isLocal 
+                    ? `/api/load-bandwidth-test-products/${category}`
+                    : `/.netlify/functions/load-bandwidth-test-products?category=${category}`;
                 
                 const fetchOptions = {
                     cache: cacheMode,
