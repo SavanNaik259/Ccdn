@@ -259,11 +259,14 @@
                 
                 const startTime = performance.now();
                 
-                // Try server endpoint first, fallback to Netlify function
+                // Use appropriate endpoint based on environment
                 const isLocal = window.location.hostname === 'localhost' || window.location.hostname.includes('replit');
                 const functionUrl = isLocal 
                     ? `/api/load-bandwidth-test-products/${category}`
                     : `/.netlify/functions/load-bandwidth-test-products?category=${category}`;
+                
+                console.log(`Environment: ${isLocal ? 'Local' : 'Deployed'}`);
+                console.log(`Using endpoint: ${functionUrl}`);
                 
                 const fetchOptions = {
                     cache: cacheMode,
