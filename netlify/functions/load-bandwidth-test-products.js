@@ -149,9 +149,12 @@ exports.handler = async (event, context) => {
 
     // Get the public download URL instead of downloading the file
     // This allows the client to fetch directly from Firebase Storage CDN
-    const downloadURL = `https://firebasestorage.googleapis.com/v0/b/auric-a0c92.firebasestorage.app/o/${encodeURIComponent('bandwidthTest/' + category + '-products.json')}?alt=media`;
+    const [downloadURL] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+    });
 
-    console.log(`Successfully generated public download URL for ${category} bandwidth test products: ${downloadURL}`);
+    console.log(`Successfully generated download URL for ${category} bandwidth test products`);
 
     return {
       statusCode: 200,

@@ -311,174 +311,6 @@ app.use(express.static('.', {
   }
 }));
 
-// Bandwidth test products endpoint - using sample data for testing
-app.get('/api/load-bandwidth-test-products/:category', async (req, res) => {
-  try {
-    const { category } = req.params;
-    
-    console.log(`Loading bandwidth test products for category: ${category}`);
-    
-    // Sample test products for bandwidth testing
-    const sampleProducts = {
-      'bandwidth-test-1': [
-        {
-          id: 'BT1-001',
-          name: 'Diamond Necklace Set',
-          price: 125000,
-          description: 'Elegant diamond necklace with matching earrings',
-          image: '/490A9712.jpg',
-          category: 'bandwidth-test-1'
-        },
-        {
-          id: 'BT1-002', 
-          name: 'Gold Chain Bracelet',
-          price: 85000,
-          description: 'Traditional gold bracelet with intricate patterns',
-          image: '/490A9757.jpg',
-          category: 'bandwidth-test-1'
-        },
-        {
-          id: 'BT1-003',
-          name: 'Pearl Earrings',
-          price: 45000,
-          description: 'Classic pearl earrings for special occasions',
-          image: '/490A9973.jpg',
-          category: 'bandwidth-test-1'
-        }
-      ],
-      'bandwidth-test-2': [
-        {
-          id: 'BT2-001',
-          name: 'Ruby Ring Collection',
-          price: 95000,
-          description: 'Stunning ruby rings with gold setting',
-          image: '/6Y4A6534.jpg',
-          category: 'bandwidth-test-2'
-        },
-        {
-          id: 'BT2-002',
-          name: 'Emerald Pendant',
-          price: 115000,
-          description: 'Beautiful emerald pendant with diamond accent',
-          image: '/490A9706.jpg',
-          category: 'bandwidth-test-2'
-        }
-      ],
-      'bandwidth-test-3': [
-        {
-          id: 'BT3-001',
-          name: 'Sapphire Bracelet',
-          price: 155000,
-          description: 'Luxury sapphire bracelet with white gold',
-          image: '/490A9761.jpg',
-          category: 'bandwidth-test-3'
-        },
-        {
-          id: 'BT3-002',
-          name: 'Wedding Ring Set',
-          price: 75000,
-          description: 'Complete wedding ring set for couples',
-          image: '/490A9744.jpg',
-          category: 'bandwidth-test-3'
-        },
-        {
-          id: 'BT3-003',
-          name: 'Anniversary Special',
-          price: 200000,
-          description: 'Limited edition anniversary jewelry set',
-          image: '/490A0064.jpg',
-          category: 'bandwidth-test-3'
-        }
-      ]
-    };
-    
-    const products = sampleProducts[category] || [];
-    
-    // Add some delay to simulate CDN behavior
-    const delay = Math.random() * 200 + 100; // 100-300ms
-    await new Promise(resolve => setTimeout(resolve, delay));
-    
-    console.log(`Successfully loaded ${products.length} ${category} bandwidth test products`);
-    
-    res.json({
-      success: true,
-      products: products,
-      category: category,
-      message: `Loaded ${products.length} test products for bandwidth testing`,
-      simulatedDelay: Math.round(delay)
-    });
-    
-  } catch (error) {
-    console.error(`Error loading bandwidth test products:`, error);
-    
-    // Provide sample data for testing when Firebase is not configured
-    const sampleProducts = generateSampleBandwidthTestProducts(category);
-    
-    res.status(200).json({
-      success: true,
-      products: sampleProducts,
-      message: `Sample ${category} products loaded (Firebase not configured)`,
-      isLocalData: true
-    });
-  }
-});
-
-// Generate sample products for bandwidth testing
-function generateSampleBandwidthTestProducts(category) {
-  const productData = {
-    'bandwidth-test-1': [
-      {
-        id: 'BT1-001',
-        name: 'Diamond Studded Necklace',
-        price: 125000,
-        image: '/490A9712.jpg',
-        description: 'Elegant diamond necklace with intricate design'
-      },
-      {
-        id: 'BT1-002',
-        name: 'Gold Chain Set',
-        price: 85000,
-        image: '/6Y4A6534.jpg',
-        description: 'Traditional gold chain with matching earrings'
-      }
-    ],
-    'bandwidth-test-2': [
-      {
-        id: 'BT2-001',
-        name: 'Ruby Emerald Bracelet',
-        price: 95000,
-        image: '/490A9757.jpg',
-        description: 'Stunning ruby and emerald bracelet'
-      },
-      {
-        id: 'BT2-002',
-        name: 'Kundan Jewelry Set',
-        price: 110000,
-        image: '/490A9761.jpg',
-        description: 'Complete kundan jewelry set'
-      }
-    ],
-    'bandwidth-test-3': [
-      {
-        id: 'BT3-001',
-        name: 'Sapphire Ring Collection',
-        price: 75000,
-        image: '/490A9973.jpg',
-        description: 'Beautiful sapphire ring collection'
-      },
-      {
-        id: 'BT3-002',
-        name: 'Wedding Set Special',
-        price: 150000,
-        image: '/490A9706.jpg',
-        description: 'Complete wedding jewelry set'
-      }
-    ]
-  };
-
-  return productData[category] || [];
-}
-
 // Simpler catch-all route to handle missing files
 app.use((req, res) => {
   // For root path, always send index.html
@@ -527,4 +359,219 @@ Available Routes:
 
 Press Ctrl+C to stop the server
 `);
+});
+// Express already declared above
+// cors already declared above
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const admin = require('firebase-admin');
+
+const app = express();
+const PORT = 5000;
+
+// Enable CORS for all routes
+app.use(cors());
+app.use(express.json());
+app.use(express.static('.'));
+
+// Multer configuration for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  try {
+    // Use service account from environment or file
+    let serviceAccount;
+
+    if (process.env.FIREBASE_PRIVATE_KEY) {
+      serviceAccount = {
+        type: 'service_account',
+        project_id: 'auric-a0c92',
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: 'https://oauth2.googleapis.com/token',
+        auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+        client_x509_cert_url: process.env.FIREBASE_CERT_URL
+      };
+    } else {
+      // Fallback to service account file (you'll need to add this)
+      console.log('Using default Firebase setup - environment variables not found');
+      serviceAccount = require('./firebase-service-account.json');
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      storageBucket: 'auric-a0c92.firebasestorage.app'
+    });
+
+    console.log('Firebase Admin initialized successfully');
+  } catch (error) {
+    console.error('Firebase Admin initialization error:', error);
+  }
+}
+
+// Bandwidth test product upload endpoint
+app.post('/upload-bandwidth-test-product', upload.single('productImage'), async (req, res) => {
+  try {
+    const { category, productName, productPrice, productDescription } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, error: 'No file provided' });
+    }
+
+    const bucket = admin.storage().bucket();
+    const productId = `TEST-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+    // Upload image with CDN headers
+    const imageFileName = `${category}_${productId}_${Date.now()}.jpg`;
+    const imageFile = bucket.file(`bandwidthTest/${imageFileName}`);
+
+    const metadata = {
+      cacheControl: 'public, max-age=2592000',
+      contentType: file.mimetype,
+      metadata: {
+        testCategory: category,
+        productId: productId,
+        uploadedAt: new Date().toISOString()
+      }
+    };
+
+    await imageFile.save(file.buffer, { metadata });
+    const imageUrl = `https://firebasestorage.googleapis.com/v0/b/auric-a0c92.firebasestorage.app/o/bandwidthTest%2F${imageFileName}?alt=media`;
+
+    // Create product data
+    const productData = {
+      id: productId,
+      name: productName,
+      price: parseFloat(productPrice),
+      description: productDescription,
+      image: imageUrl,
+      category: category,
+      createdAt: new Date().toISOString(),
+      testNote: 'CDN bandwidth test product'
+    };
+
+    // Load existing products
+    let existingProducts = [];
+    try {
+      const jsonFile = bucket.file(`bandwidthTest/${category}-products.json`);
+      const [exists] = await jsonFile.exists();
+
+      if (exists) {
+        const [fileContents] = await jsonFile.download();
+        const data = JSON.parse(fileContents.toString());
+        if (Array.isArray(data)) {
+          existingProducts = data;
+        }
+      }
+    } catch (error) {
+      console.log('Creating new product file for category:', category);
+    }
+
+    // Add new product
+    existingProducts.push(productData);
+
+    // Save updated products JSON with CDN headers
+    const jsonData = JSON.stringify(existingProducts, null, 2);
+    const jsonFile = bucket.file(`bandwidthTest/${category}-products.json`);
+
+    const jsonMetadata = {
+      contentType: 'application/json',
+      cacheControl: 'public, max-age=2592000',
+      metadata: {
+        testCategory: category,
+        productsCount: existingProducts.length.toString(),
+        lastUpdated: new Date().toISOString()
+      }
+    };
+
+    await jsonFile.save(jsonData, { metadata: jsonMetadata });
+
+    res.json({
+      success: true,
+      message: `Product "${productName}" uploaded successfully!`,
+      productId: productId,
+      category: category,
+      totalProducts: existingProducts.length,
+      imageUrl: imageUrl
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: `Upload failed: ${error.message}`
+    });
+  }
+});
+
+// Load bandwidth test products endpoint
+app.get('/load-bandwidth-test-products', async (req, res) => {
+  try {
+    const category = req.query.category || 'bandwidth-test-1';
+    const bucket = admin.storage().bucket();
+    const jsonFile = bucket.file(`bandwidthTest/${category}-products.json`);
+
+    const [exists] = await jsonFile.exists();
+
+    if (!exists) {
+      return res.json({ 
+        success: true, 
+        products: [],
+        message: `No products found for category: ${category}`,
+        fromCache: false
+      });
+    }
+
+    const [fileContents] = await jsonFile.download();
+    const products = JSON.parse(fileContents.toString());
+
+    res.set({
+      'Cache-Control': 'public, max-age=3600',
+      'X-Data-Source': 'firebase-storage'
+    });
+
+    res.json({
+      success: true,
+      products: Array.isArray(products) ? products : [],
+      category: category,
+      fromCache: false,
+      loadedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error loading bandwidth test products:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      products: []
+    });
+  }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    firebase: admin.apps.length > 0 ? 'Connected' : 'Not Connected'
+  });
+});
+
+// Serve static files
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running at http://0.0.0.0:${PORT}`);
+  console.log(`Firebase Admin: ${admin.apps.length > 0 ? 'Connected' : 'Not Connected'}`);
 });

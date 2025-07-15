@@ -259,14 +259,8 @@
                 
                 const startTime = performance.now();
                 
-                // Use appropriate endpoint based on environment
-                const isLocal = window.location.hostname === 'localhost' || window.location.hostname.includes('replit');
-                const functionUrl = isLocal 
-                    ? `/api/load-bandwidth-test-products/${category}`
-                    : `/.netlify/functions/load-bandwidth-test-products?category=${category}`;
-                
-                console.log(`Environment: ${isLocal ? 'Local' : 'Deployed'}`);
-                console.log(`Using endpoint: ${functionUrl}`);
+                // Use Netlify function instead of direct Firebase access
+                const functionUrl = `/.netlify/functions/load-bandwidth-test-products?category=${category}`;
                 
                 const fetchOptions = {
                     cache: cacheMode,
@@ -304,38 +298,6 @@
                 // If we have a downloadURL, fetch directly from Firebase Storage CDN
                 if (data.downloadURL) {
                     console.log(`🔗 Got download URL, fetching directly from Firebase Storage CDN...`);
-                    console.log(`📍 Download URL: ${data.downloadURL}`);
-                    
-                    // Fetch directly from Firebase Storage CDN
-                    const cdnStartTime = performance.now();
-                    const cdnResponse = await fetch(data.downloadURL, { cache: cacheMode });
-                    const cdnEndTime = performance.now();
-                    const cdnRequestTime = cdnEndTime - cdnStartTime;
-                    
-                    if (!cdnResponse.ok) {
-                        throw new Error(`CDN fetch failed: ${cdnResponse.status} ${cdnResponse.statusText}`);
-                    }
-                    
-                    const cdnResponseText = await cdnResponse.text();
-                    const cdnDataSize = new Blob([cdnResponseText]).size;
-                    const products = JSON.parse(cdnResponseText);
-                    
-                    console.log(`📊 CDN Response details:`, {
-                        requestTime: cdnRequestTime,
-                        dataSize: cdnDataSize,
-                        cacheControl: cdnResponse.headers.get('cache-control'),
-                        etag: cdnResponse.headers.get('etag'),
-                        status: cdnResponse.status,
-                        success: true,
-                        productCount: products.length
-                    });
-                    
-                    displayProducts(products, category);
-                    updateStats(cdnRequestTime, products.length, 'CDN', cdnDataSize);
-                    
-                    const speedEmoji = cdnRequestTime < 100 ? '⚡' : cdnRequestTime < 300 ? '🚀' : '🐌';
-                    showMessage(`${speedEmoji} Loaded ${products.length} products from Firebase CDN in ${Math.round(cdnRequestTime)}ms`, 'success');
-                    return;
                     
                     const cdnStartTime = performance.now();
                     const cdnResponse = await fetch(data.downloadURL, {
@@ -345,20 +307,13 @@
                     const cdnEndTime = performance.now();
                     const cdnRequestTime = cdnEndTime - cdnStartTime;
                     
-                    console.log(`📊 CDN Response Status: ${cdnResponse.status}`);
-                    console.log(`📊 CDN Response OK: ${cdnResponse.ok}`);
-                    
                     if (!cdnResponse.ok) {
-                        throw new Error(`CDN fetch failed: ${cdnResponse.status} ${cdnResponse.statusText}`);
+                        throw new Error(`CDN fetch failed: ${cdnResponse.status}`);
                     }
                     
                     const cdnResponseText = await cdnResponse.text();
                     const dataSize = new Blob([cdnResponseText]).size;
-                    console.log(`📊 CDN Response Size: ${dataSize} bytes`);
-                    console.log(`📊 CDN Response Text (first 200 chars): ${cdnResponseText.substring(0, 200)}`);
-                    
                     const products = JSON.parse(cdnResponseText);
-                    console.log(`📊 Parsed Products Count: ${products.length}`);
                     
                     console.log(`📊 CDN fetch details:`, {
                         cdnRequestTime: Math.round(cdnRequestTime),
@@ -425,13 +380,11 @@
                 
             } catch (error) {
                 console.error('❌ Load error:', error);
-                console.error('❌ Error stack:', error.stack);
                 showMessage(`Error loading ${category}: ${error.message}`, 'error');
                 document.getElementById('products').innerHTML = `
                     <div class="empty-state">
                         <h3>Error Loading Products</h3>
-                        <p><strong>Error:</strong> ${error.message}</p>
-                        <p><strong>Details:</strong> Check browser console for more information</p>
+                        <p>${error.message}</p>
                         <p>Try adding products first using the uploader.</p>
                     </div>
                 `;

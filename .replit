@@ -5,7 +5,7 @@ channel = "stable-24_05"
 packages = ["python311Packages.python", "unzipNLS"]
 
 [workflows]
-runButton = "Project"
+runButton = "Bandwidth Test Server"
 
 [[workflows.workflow]]
 name = "Project"
